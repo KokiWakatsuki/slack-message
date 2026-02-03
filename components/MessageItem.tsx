@@ -40,15 +40,25 @@ export function MessageItem({ message, isThreadView = false }: MessageItemProps)
                                 // Override default element styling to match Slack a bit better
                                 p: ({ node, ...props }) => <p className="mb-1 last:mb-0" {...props} />,
                                 a: ({ node, ...props }) => <a className="text-blue-600 hover:underline" target="_blank" rel="noopener" {...props} />,
-                                pre: ({ node, ...props }) => <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded mb-2 overflow-x-auto" {...props} />,
+                                // User requested: Inline needs bg, Block does not.
+                                pre: ({ node, ...props }) => <pre className="text-blue-700 dark:text-yellow-400 p-2 rounded mb-2 overflow-x-auto border border-gray-200 dark:border-gray-700" {...props} />,
                                 code: ({ node, ...props }) => {
                                     // @ts-ignore
                                     const inline = props.inline || !String(props.className).includes('language-');
                                     return inline
-                                        ? <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm text-red-500" {...props} />
-                                        : <code className="block text-sm" {...props} />
+                                        // Inline: Bg needed.
+                                        ? <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm text-blue-700 dark:text-yellow-400 font-bold" {...props} />
+                                        : <code className="block text-sm font-mono whitespace-pre text-blue-700 dark:text-yellow-400" {...props} />
                                 },
-                                blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-3 text-gray-500 italic mb-2" {...props} />,
+                                blockquote: ({ node, ...props }) => (
+                                    <blockquote
+                                        className="border-l-4 border-gray-300 dark:border-gray-500 pl-3 text-gray-700 dark:text-gray-300 mb-2 not-italic [&_p::before]:content-none [&_p::after]:content-none"
+                                        {...props}
+                                    />
+                                ),
+                                ol: ({ node, ...props }) => <ol className="list-decimal list-outside ml-5 mb-2" {...props} />,
+                                ul: ({ node, ...props }) => <ul className="list-disc list-outside ml-5 mb-2" {...props} />,
+                                li: ({ node, ...props }) => <li className="mb-0.5" {...props} />,
                             }}
                         >
                             {slackToMarkdown(message.content)}
@@ -70,9 +80,21 @@ export function MessageItem({ message, isThreadView = false }: MessageItemProps)
                     {message.reactions && message.reactions.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
                             {message.reactions.map((r, i) => (
-                                <div key={i} className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 border border-transparent rounded-full text-xs text-gray-700 dark:text-gray-300">
+                                <div
+                                    key={i}
+                                    className="relative group/reaction flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 border border-transparent rounded-full text-xs text-gray-700 dark:text-gray-300 cursor-default hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                >
                                     <span>{r.name}</span>
                                     <span className="text-[10px] font-medium">{r.count}</span>
+
+                                    {/* Custom Tooltip */}
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/reaction:block z-50 whitespace-nowrap">
+                                        <div className="bg-black text-white text-xs px-2 py-1 rounded shadow-lg max-w-xs truncate">
+                                            {r.users.join(', ')}
+                                        </div>
+                                        {/* Little arrow */}
+                                        <div className="w-2 h-2 bg-black rotate-45 absolute -bottom-1 left-1/2 -translate-x-1/2"></div>
+                                    </div>
                                 </div>
                             ))}
                         </div>

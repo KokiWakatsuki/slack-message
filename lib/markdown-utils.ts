@@ -16,11 +16,28 @@ export function slackToMarkdown(text: string): string {
     // Strikethrough: ~text~ -> ~~text~~
     md = md.replace(/~([^~]+)~/g, '~~$1~~');
 
-    // Quotes: > text (Standard MD handles this, but Slack often uses &gt;)
+    // Quotes: Ensure space after > at start of line or string
+    // Slack: >Text -> MD: > Text
+    md = md.replace(/^>([^\s])/gm, '> $1');
     md = md.replace(/&gt;/g, '>');
 
-    // Newlines are handled by remark-breaks usually, but just in case
-    // md = md.replace(/\n/g, '  \n'); 
+    // Code blocks: Convert ```content``` to
+    // ```
+    // content
+    // ```
+    // This handling ensures that text immediately following the opening ticks is treated as content,
+    // and ensures fences have their own lines.
+    md = md.replace(/```([\s\S]*?)```/g, (match, content) => {
+        return '\n```\n' + content + '\n```\n';
+    });
+    // Remove extra newlines possibly created by the above if any
+    // md = md.replace(/\n{3,}/g, '\n\n');
+
+    // Links: <url|text> -> [text](url)
+    md = md.replace(/<([^|>]+)\|([^>]+)>/g, '[$2]($1)');
+
+    // Links: <url> -> [url](url)
+    md = md.replace(/<([^|>]+)>/g, '$1');
 
     return md;
 }
