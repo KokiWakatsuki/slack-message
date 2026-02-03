@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# JSON形式のキー
+slack-message-*.json
+
+# 資料集
+開発フロー.md
+仕様書.md
