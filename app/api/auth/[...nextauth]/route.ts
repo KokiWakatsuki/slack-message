@@ -25,7 +25,11 @@ const handler = NextAuth({
                         };
                     }
                 } catch (e) {
-                    console.error("Auth error:", e);
+                    console.error("Auth error details:", e);
+                    if (e instanceof Error) {
+                        console.error("Auth error message:", e.message);
+                        console.error("Auth error stack:", e.stack);
+                    }
                 }
                 return null;
             }
