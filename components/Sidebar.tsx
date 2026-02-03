@@ -14,7 +14,7 @@ export function Sidebar({ channels }: SidebarProps) {
     const currentId = params?.id ? decodeURIComponent(params.id as string) : null;
 
     return (
-        <div className="w-64 bg-[#3F0E40] dark:bg-[#1a061a] text-white flex flex-col h-screen fixed inset-y-0 left-0 overflow-y-auto border-r border-transparent dark:border-gray-800">
+        <div className="w-full h-full bg-[#3F0E40] dark:bg-[#1a061a] text-white flex flex-col overflow-y-auto border-r border-transparent dark:border-gray-800">
             <div className="p-4 border-b border-[#5d2c5d] dark:border-[#350d36]">
                 <h1 className="font-bold text-xl">Slack Archive</h1>
             </div>
@@ -30,8 +30,8 @@ export function Sidebar({ channels }: SidebarProps) {
                                 <Link
                                     href={`/channels/${encodeURIComponent(channel.id)}`}
                                     className={`flex items-center px-4 py-1 hover:bg-[#350d36] dark:hover:bg-[#350d36] hover:text-white ${isActive
-                                            ? 'bg-[#1164A3] text-white'
-                                            : 'text-[#cfc3cf] dark:text-gray-300'
+                                        ? 'bg-[#1164A3] text-white'
+                                        : 'text-[#cfc3cf] dark:text-gray-300'
                                         }`}
                                 >
                                     <Hash className="w-4 h-4 mr-2 opacity-70" />

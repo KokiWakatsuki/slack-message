@@ -19,7 +19,7 @@ export function ThreadSidebar({ rootMessage, channelId }: ThreadSidebarProps) {
     };
 
     return (
-        <div className="w-96 flex flex-col border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 h-full shadow-xl z-20">
+        <div className="w-full flex flex-col border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 h-full shadow-xl z-20">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex flex-col">
                     <h3 className="font-bold text-gray-900 dark:text-gray-100">Thread</h3>

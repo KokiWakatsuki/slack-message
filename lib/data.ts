@@ -124,18 +124,13 @@ export async function getMessages(channelId: string): Promise<Message[]> {
 
     const rootMessages: Message[] = [];
 
-    // Second pass: Link everything
-    rows.forEach(row => {
-        const index = parseInt(row.get('index'));
-        const msg = messageMap.get(index);
-        if (!msg) return;
-
+    // Second pass: Link everything using map values to avoid processing duplicate indices
+    // Iterating messageMap.values() ensures we process each unique message exactly once.
+    for (const msg of messageMap.values()) {
         if (msg.type === 'REACTION') {
             const parentIdx = msg.parentIndex;
             if (parentIdx !== null && messageMap.has(parentIdx)) {
                 const parent = messageMap.get(parentIdx)!;
-                // Aggregate reactions
-                // content is like ":smile:"
                 const reactionName = msg.content;
                 let reactionGroup = parent.reactions?.find(r => r.name === reactionName);
                 if (!reactionGroup) {
@@ -148,23 +143,18 @@ export async function getMessages(channelId: string): Promise<Message[]> {
         } else if ((msg.type === 'REPLY' || msg.parentIndex) && msg.parentIndex !== null) {
             // It's a reply
             if (messageMap.has(msg.parentIndex)) {
-                // Check if it's already added to avoid duplicates if row iteration order implies anything
-                // Actually, we are iterating all rows.
-                // We need to ensure we don't add it to rootMessages.
                 const parent = messageMap.get(msg.parentIndex)!;
-                // Only add if not already in replies (unlikely with this logic but safe)
-                if (!parent.replies?.includes(msg)) {
-                    parent.replies?.push(msg);
-                }
+                // Since we process each unique msg once, this push is safe without duplication check
+                parent.replies?.push(msg);
             } else {
-                // Orphan reply, maybe show as root?
+                // Orphan reply, show as root
                 rootMessages.push(msg);
             }
         } else {
             // Root message
             rootMessages.push(msg);
         }
-    });
+    }
 
     // Sort by date ASC (Oldest first)
     // replies also need sorting?
