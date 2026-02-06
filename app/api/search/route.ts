@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(filtered.slice(0, 100)); // Limit to 100 results for performance
     } catch (e) {
         console.error("Search API Error:", e);
-        return NextResponse.json({ error: "Failed to search" }, { status: 500 });
+        // Client expects an array, so return empty array on error to prevent "map is not a function"
+        return NextResponse.json([]);
     }
 }
