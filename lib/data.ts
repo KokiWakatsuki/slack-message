@@ -113,10 +113,12 @@ async function getMessagesRaw(channelId: string): Promise<Message[]> {
             parentIndex,
             parentTs: (row.get('parentTs') || '').replace(/^'/, ''),
             slackTs: (row.get('slackTs') || '').replace(/^'/, ''),
-            fileUrl: row.get('fileUrl') || '',
+            fileUrl: (row.get('fileUrl') || '').replace(/^'/, ''),
             files: (row.get('fileUrl') || '').split('\n').filter(Boolean).map((f: string) => {
-                const [url, name] = f.split('|');
-                return { url, name: name || 'Attachment' }; // Fallback for old data
+                const parts = f.split('|');
+                const url = parts[0];
+                const name = parts.length > 1 ? parts.slice(1).join('|') : 'Attachment';
+                return { url, name };
             }),
             user: users.get(userIndex),
             replies: [],
