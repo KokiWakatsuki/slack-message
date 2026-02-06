@@ -20,7 +20,7 @@ export async function getChannels(): Promise<Channel[]> {
             .filter(sheet => {
                 const title = sheet.title;
                 const isIgnored =
-                    title === USER_SHEET_NAME ||
+                    title.startsWith('_') ||
                     title.startsWith('Template') ||
                     title === 'シート1' ||
                     title === 'Sheet1';
