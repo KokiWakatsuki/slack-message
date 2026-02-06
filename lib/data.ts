@@ -18,7 +18,7 @@ export async function getChannels(): Promise<Channel[]> {
 
         const channels = sheets
             .filter(sheet => {
-                const title = sheet.title;
+                const title = sheet.title.trim();
                 const isIgnored =
                     title.startsWith('_') ||
                     title.startsWith('Template') ||

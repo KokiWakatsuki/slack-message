@@ -141,5 +141,10 @@ function formatStr(dateStr: string) {
     const minute = parseInt(dateStr.substring(10, 12));
 
     const date = new Date(year, month, day, hour, minute);
-    return format(date, 'MMM d, h:mm a');
+    if (isNaN(date.getTime())) return dateStr;
+    try {
+        return format(date, 'MMM d, h:mm a');
+    } catch (e) {
+        return dateStr;
+    }
 }
