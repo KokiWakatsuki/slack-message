@@ -15,7 +15,7 @@ interface SearchResult extends Message {
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
-export default function SearchPage() {
+function SearchContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const initialQuery = searchParams.get('q') || '';
@@ -103,5 +103,15 @@ export default function SearchPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+import { Suspense } from 'react';
+
+export default function SearchPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading Search...</div>}>
+            <SearchContent />
+        </Suspense>
     );
 }
