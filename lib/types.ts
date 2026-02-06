@@ -20,6 +20,7 @@ export interface Message {
     parentTs: string;
     slackTs: string;
     fileUrl: string;
+    files?: { url: string; name: string }[]; // Enriched field (parsed from fileUrl)
     replies?: Message[]; // Enriched field
     reactions?: { name: string; count: number; users: string[] }[]; // Enriched field
     user?: User;         // Enriched field

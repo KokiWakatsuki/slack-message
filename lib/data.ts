@@ -82,7 +82,10 @@ export async function getUsers(): Promise<Map<number, User>> {
     }
 }
 
-export async function getMessages(channelId: string): Promise<Message[]> {
+import { unstable_cache } from 'next/cache';
+
+// Raw function that hits the API
+async function getMessagesRaw(channelId: string): Promise<Message[]> {
     const doc = await getDoc();
     const sheet = doc.sheetsByTitle[channelId];
     if (!sheet) return [];
@@ -101,9 +104,6 @@ export async function getMessages(channelId: string): Promise<Message[]> {
         const parentIndexStr = row.get('parentIndex');
         const parentIndex = parentIndexStr ? parseInt(parentIndexStr) : null;
 
-        // Skip reactions in the first pass, we process them later or handle them here?
-        // Actually, reactions are separate rows. We need to attach them to the parent.
-
         const msg: Message = {
             index,
             createdAt: row.get('createdAt'),
@@ -114,6 +114,10 @@ export async function getMessages(channelId: string): Promise<Message[]> {
             parentTs: (row.get('parentTs') || '').replace(/^'/, ''),
             slackTs: (row.get('slackTs') || '').replace(/^'/, ''),
             fileUrl: row.get('fileUrl') || '',
+            files: (row.get('fileUrl') || '').split('\n').filter(Boolean).map((f: string) => {
+                const [url, name] = f.split('|');
+                return { url, name: name || 'Attachment' }; // Fallback for old data
+            }),
             user: users.get(userIndex),
             replies: [],
             reactions: [],
@@ -124,8 +128,7 @@ export async function getMessages(channelId: string): Promise<Message[]> {
 
     const rootMessages: Message[] = [];
 
-    // Second pass: Link everything using map values to avoid processing duplicate indices
-    // Iterating messageMap.values() ensures we process each unique message exactly once.
+    // Second pass: Link everything using map values
     for (const msg of messageMap.values()) {
         if (msg.type === 'REACTION') {
             const parentIdx = msg.parentIndex;
@@ -144,10 +147,8 @@ export async function getMessages(channelId: string): Promise<Message[]> {
             // It's a reply
             if (messageMap.has(msg.parentIndex)) {
                 const parent = messageMap.get(msg.parentIndex)!;
-                // Since we process each unique msg once, this push is safe without duplication check
                 parent.replies?.push(msg);
             } else {
-                // Orphan reply, show as root
                 rootMessages.push(msg);
             }
         } else {
@@ -157,13 +158,19 @@ export async function getMessages(channelId: string): Promise<Message[]> {
     }
 
     // Sort by date ASC (Oldest first)
-    // replies also need sorting?
     rootMessages.forEach(msg => {
         msg.replies?.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     });
 
     return rootMessages.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
+
+// Cached version exported for use
+export const getMessages = unstable_cache(
+    async (channelId: string) => getMessagesRaw(channelId),
+    ['messages-cache'],
+    { revalidate: 5 } // Cache for 5 seconds
+);
 
 function replaceMentions(text: string, users: Map<number, User>): string {
     return text.replace(/<@(\d+)>/g, (match, indexStr) => {

@@ -65,12 +65,12 @@ export function MessageItem({ message, isThreadView = false }: MessageItemProps)
                         </ReactMarkdown>
                     </div>
 
-                    {message.fileUrl && (
-                        <div className="mt-2">
-                            {message.fileUrl.split('\n').map((url, i) => (
-                                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 p-2 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 hover:underline text-sm">
-                                    <File className="w-4 h-4" />
-                                    Attachment {i + 1}
+                    {message.files && message.files.length > 0 && (
+                        <div className="mt-2 flex flex-col gap-1">
+                            {message.files.map((file, i) => (
+                                <a key={i} href={file.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 p-2 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 hover:underline text-sm w-fit">
+                                    <File className="w-4 h-4 flex-shrink-0" />
+                                    <span className="truncate max-w-[300px]">{file.name}</span>
                                 </a>
                             ))}
                         </div>

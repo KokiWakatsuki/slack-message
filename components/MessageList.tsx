@@ -2,39 +2,85 @@
 
 import { Message } from '@/lib/types';
 import { MessageItem } from './MessageItem';
-import { useEffect, useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
+import useSWR from 'swr';
+import { useParams, useSearchParams } from 'next/navigation';
 
 interface MessageListProps {
-    messages: Message[];
+    initialMessages: Message[];
 }
 
-export function MessageList({ messages }: MessageListProps) {
-    const bottomRef = useRef<HTMLDivElement>(null);
-    const prevCountRef = useRef(0);
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
-    useEffect(() => {
-        // Only scroll if message count increased (new message arrived or initial load)
-        // This prevents scrolling when just passing props with same data (e.g. url param change)
-        if (messages.length > prevCountRef.current) {
-            bottomRef.current?.scrollIntoView({ behavior: 'auto' });
-            prevCountRef.current = messages.length;
-        } else if (prevCountRef.current === 0 && messages.length > 0) {
-            // Handle initial load case if length matches but ref was 0
-            bottomRef.current?.scrollIntoView({ behavior: 'auto' });
-            prevCountRef.current = messages.length;
+export function MessageList({ initialMessages }: MessageListProps) {
+    const params = useParams();
+    // decodeURIComponent is needed because params from next/navigation might be encoded
+    const channelId = params.channel ? decodeURIComponent(Array.isArray(params.channel) ? params.channel[0] : params.channel) : null;
+
+    // Background polling every 5 seconds
+    const { data: messages, mutate } = useSWR<Message[]>(
+        channelId ? `/api/channels/${encodeURIComponent(channelId)}/messages` : null,
+        fetcher,
+        {
+            fallbackData: initialMessages,
+            refreshInterval: 5000, // Poll every 5 seconds
+            revalidateOnFocus: true
         }
-    }, [messages]);
+    );
+
+    // Filter messages by search query
+    const searchParams = useSearchParams();
+    const query = searchParams.get('q')?.toLowerCase() || '';
+
+    const displayMessages = messages?.filter(m =>
+        !query ||
+        m.content.toLowerCase().includes(query) ||
+        m.user?.name.toLowerCase().includes(query) ||
+        m.files?.some(f => f.name.toLowerCase().includes(query))
+    ) || [];
+
+    const virtuosoRef = useRef<VirtuosoHandle>(null);
+    const [isAtBottom, setIsAtBottom] = useState(true);
+    const prevCountRef = useRef(displayMessages.length || 0);
+
+    // Auto-scroll logic only if user was already at bottom or it's initial load
+    useEffect(() => {
+        if (!displayMessages) return;
+
+        // If new messages arrived
+        if (displayMessages.length > prevCountRef.current) {
+            if (isAtBottom) {
+                // Use setTimeout to ensure virtuoso has re-calculated sizes
+                setTimeout(() => {
+                    virtuosoRef.current?.scrollToIndex({
+                        index: displayMessages.length - 1,
+                        align: 'end',
+                        behavior: 'smooth'
+                    });
+                }, 100);
+            }
+            prevCountRef.current = displayMessages.length;
+        }
+    }, [displayMessages, isAtBottom]);
 
     return (
-        <div className="flex flex-col pb-10">
-            {messages.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">No messages found.</div>
-            ) : (
-                messages.map((msg) => (
-                    <MessageItem key={msg.index} message={msg} />
-                ))
-            )}
-            <div ref={bottomRef} />
+        <div className="h-[calc(100vh-160px)] w-full">
+            {/* Height needs to be fixed for Virtuoso.
+                 160px is an approximation of header + padding, needs adjustment based on actual layout */}
+
+            <Virtuoso
+                ref={virtuosoRef}
+                data={displayMessages}
+                totalCount={displayMessages.length}
+                atBottomStateChange={(bottom) => setIsAtBottom(bottom)}
+                initialTopMostItemIndex={displayMessages.length - 1} // Start at bottom
+                itemContent={(index, message) => (
+                    <MessageItem message={message} />
+                )}
+                className="no-scrollbar"
+                followOutput={isAtBottom ? 'smooth' : false}
+            />
         </div>
     );
 }

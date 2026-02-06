@@ -18,7 +18,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     };
 }
 
-import { RefreshButton } from '@/components/RefreshButton';
+import { ChannelHeader } from '@/components/ChannelHeader';
 import { ThreadSidebar } from '@/components/ThreadSidebar';
 import { ResizablePanel } from '@/components/ResizablePanel';
 
@@ -47,12 +47,9 @@ export default async function ChannelPage({ params, searchParams }: PageProps) {
     return (
         <div className="flex h-full w-full overflow-hidden">
             <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-900 h-full">
-                <header className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky top-0 z-10 flex items-center justify-between">
-                    <h1 className="font-bold text-lg text-gray-900 dark:text-white">#{decodedId}</h1>
-                    <RefreshButton />
-                </header>
-                <div className="flex-1 overflow-y-auto">
-                    <MessageList messages={messages} />
+                <ChannelHeader title={decodedId} />
+                <div className="flex-1 min-h-0">
+                    <MessageList initialMessages={messages} />
                 </div>
             </div>
 

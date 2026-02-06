@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from 'next/navigation';
-import { RefreshCw } from 'lucide-react';
+import { RotateCw } from 'lucide-react';
 import { useState } from 'react';
 
 export function RefreshButton() {
@@ -11,21 +11,16 @@ export function RefreshButton() {
     const handleRefresh = () => {
         setIsRefreshing(true);
         router.refresh();
-
-        // Reset spinning state after a short delay or when usage suggests
-        // Since router.refresh is async but doesn't return a promise we can await easily in this context,
-        // we just show feedback for a moment.
         setTimeout(() => setIsRefreshing(false), 1000);
     };
 
     return (
         <button
             onClick={handleRefresh}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
-            title="Refresh messages"
-            disabled={isRefreshing}
+            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${isRefreshing ? 'animate-spin' : ''}`}
+            title="Refresh"
         >
-            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RotateCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
     );
 }
