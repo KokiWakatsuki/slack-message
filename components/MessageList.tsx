@@ -16,7 +16,7 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 export function MessageList({ initialMessages }: MessageListProps) {
     const params = useParams();
     // decodeURIComponent is needed because params from next/navigation might be encoded
-    const channelId = params.channel ? decodeURIComponent(Array.isArray(params.channel) ? params.channel[0] : params.channel) : null;
+    const channelId = params?.id ? decodeURIComponent(Array.isArray(params.id) ? params.id[0] : params.id) : null;
 
     // Background polling every 5 seconds
     const { data: messages, mutate } = useSWR<Message[]>(
