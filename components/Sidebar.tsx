@@ -4,16 +4,54 @@ import Link from 'next/link';
 import { Channel } from '@/lib/types';
 import { Hash, Search } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface SidebarProps {
     channels: Channel[];
 }
 
-export function Sidebar({ channels }: SidebarProps) {
+export function Sidebar({ channels: initialChannels }: SidebarProps) {
     const params = useParams();
     const currentId = params?.id ? decodeURIComponent(params.id as string) : null;
+    const [channels, setChannels] = useState<Channel[]>(initialChannels);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Auto-refresh channels every 10 seconds
+    useEffect(() => {
+        const fetchChannels = async () => {
+            try {
+                const res = await fetch('/api/channels');
+                if (res.ok) {
+                    const data = await res.json();
+                    setChannels(data);
+                }
+            } catch (error) {
+                console.error('Auto-refresh failed:', error);
+            }
+        };
+
+        // Initial fetch to make sure we are up to date
+        fetchChannels();
+
+        const interval = setInterval(fetchChannels, 10000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleManualRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            const res = await fetch('/api/channels');
+            if (res.ok) {
+                const data = await res.json();
+                setChannels(data);
+            }
+        } catch (error) {
+            console.error('Manual refresh failed:', error);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     const filteredChannels = channels.filter(channel =>
         channel.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -24,9 +62,20 @@ export function Sidebar({ channels }: SidebarProps) {
             <div className="p-4 border-b border-[#5d2c5d] dark:border-[#350d36]">
                 <div className="mb-4 flex items-center justify-between">
                     <h1 className="font-bold text-xl">Slack Archive</h1>
-                    <Link href="/search" className="p-2 hover:bg-[#350d36] rounded-full transition-colors" title="Global Search">
-                        <Search className="w-5 h-5 text-[#cfc3cf]" />
-                    </Link>
+                    <div className="flex gap-1">
+                        <button
+                            onClick={handleManualRefresh}
+                            className={`p-2 hover:bg-[#350d36] rounded-full transition-colors ${isRefreshing ? 'animate-spin' : ''}`}
+                            title="Refresh Channels"
+                        >
+                            <svg className="w-5 h-5 text-[#cfc3cf]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                        <Link href="/search" className="p-2 hover:bg-[#350d36] rounded-full transition-colors" title="Global Search">
+                            <Search className="w-5 h-5 text-[#cfc3cf]" />
+                        </Link>
+                    </div>
                 </div>
                 <div className="relative">
                     <input
@@ -40,8 +89,8 @@ export function Sidebar({ channels }: SidebarProps) {
                 </div>
             </div>
             <div className="flex-1 py-4">
-                <div className="px-4 mb-2">
-                    <h2 className="text-[#cfc3cf] dark:text-gray-400 text-sm font-medium">Channels</h2>
+                <div className="px-4 mb-2 flex justify-between items-center">
+                    <h2 className="text-[#cfc3cf] dark:text-gray-400 text-sm font-medium">Channels ({channels.length})</h2>
                 </div>
                 <ul>
                     {filteredChannels.length === 0 ? (
