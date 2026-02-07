@@ -1,4 +1,6 @@
 # マニュアル
+**Update**: Added Global Search caching & Sidebar Channel Refresh.
+
 https://caring-sort-206.notion.site/Slack-2fa5c85cb41f80e78652cc5e988db636?pvs=74
 
 # .env.local
