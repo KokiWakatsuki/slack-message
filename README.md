@@ -1,6 +1,15 @@
 # マニュアル
 https://caring-sort-206.notion.site/Slack-2fa5c85cb41f80e78652cc5e988db636?pvs=74
 
+# .env.local
+SPREADSHEET_ID="スプシから取得"
+
+GOOGLE_SERVICE_ACCOUNT_EMAIL="jsonから取得"
+GOOGLE_PRIVATE_KEY="jsonから取得"
+
+NEXTAUTH_SECRET="ランダムな文字列"
+NEXTAUTH_URL="http://localhost:3000"
+
 # Next.js
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
