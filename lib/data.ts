@@ -21,14 +21,15 @@ export async function getChannels(): Promise<Channel[]> {
         const mapSheet = doc.sheetsByTitle[CHANNEL_MAP_SHEET_NAME];
 
         if (mapSheet) {
-            const rows = await mapSheet.getRows();
-            // Assuming Structure: [Channel ID, Sheet Name]
-            // We use the Sheet Name (col 2, index 1? No, google-spreadsheet rows object uses headers)
-            // But wait, getRows uses headers. _channels header is ["channelId", "lastKnownName"]
-            rows.forEach(row => {
-                const name = row.get('lastKnownName');
-                if (name) allowedSheetNames.add(name);
-            });
+            try {
+                const rows = await mapSheet.getRows();
+                rows.forEach(row => {
+                    const name = row.get('lastKnownName');
+                    if (name) allowedSheetNames.add(name);
+                });
+            } catch (err) {
+                console.error("Failed to read _channels sheet, skipping whitelist filter:", err);
+            }
         }
 
         const channels = sheets
