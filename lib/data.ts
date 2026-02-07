@@ -8,13 +8,28 @@ const USER_SHEET_NAME = '_user';
 // Cache for users to avoid repeated fetching
 let userCache: Map<number, User> | null = null;
 
+const CHANNEL_MAP_SHEET_NAME = '_channels';
+
 export async function getChannels(): Promise<Channel[]> {
     console.log("Fetching channels...");
     try {
         const doc = await getDoc();
-        console.log(`Doc loaded: ${doc.title}`);
         const sheets = doc.sheetsByIndex;
-        console.log(`Found ${sheets.length} sheets`);
+
+        // 1. Get the allowed channel names from _channels sheet
+        let allowedSheetNames = new Set<string>();
+        const mapSheet = doc.sheetsByTitle[CHANNEL_MAP_SHEET_NAME];
+
+        if (mapSheet) {
+            const rows = await mapSheet.getRows();
+            // Assuming Structure: [Channel ID, Sheet Name]
+            // We use the Sheet Name (col 2, index 1? No, google-spreadsheet rows object uses headers)
+            // But wait, getRows uses headers. _channels header is ["channelId", "lastKnownName"]
+            rows.forEach(row => {
+                const name = row.get('lastKnownName');
+                if (name) allowedSheetNames.add(name);
+            });
+        }
 
         const channels = sheets
             .filter(sheet => {
@@ -24,11 +39,18 @@ export async function getChannels(): Promise<Channel[]> {
                     title.startsWith('Template') ||
                     title === 'シート1' ||
                     title === 'Sheet1';
-                if (isIgnored) console.log(`Ignoring sheet: ${title}`);
-                return !isIgnored;
+
+                if (isIgnored) return false;
+
+                // If we have a whitelist, enforce it
+                if (allowedSheetNames.size > 0) {
+                    return allowedSheetNames.has(title);
+                }
+
+                return true;
             })
             .map(sheet => ({
-                id: sheet.title,
+                id: sheet.title, // ID is the Sheet Name for now
                 name: sheet.title,
             }))
             .sort((a, b) => a.name.localeCompare(b.name));
