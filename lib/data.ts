@@ -10,7 +10,7 @@ let userCache: Map<number, User> | null = null;
 
 const CHANNEL_MAP_SHEET_NAME = '_channels';
 
-export async function getChannels(): Promise<Channel[]> {
+async function getChannelsRaw(): Promise<Channel[]> {
     console.log("Fetching channels...");
     try {
         const doc = await getDoc();
@@ -63,6 +63,12 @@ export async function getChannels(): Promise<Channel[]> {
         throw e;
     }
 }
+
+export const getChannels = unstable_cache(
+    async () => getChannelsRaw(),
+    ['channels-list'],
+    { revalidate: 30 }
+);
 
 export async function getUsers(): Promise<Map<number, User>> {
     if (userCache) return userCache;

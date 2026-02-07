@@ -77,7 +77,7 @@ function SearchContent() {
                     </div>
                 )}
 
-                {results && results.length === 0 && query && (
+                {!isLoading && results && results.length === 0 && query && (
                     <div className="text-center text-gray-500 mt-20">
                         <p>No results found for "{query}"</p>
                     </div>

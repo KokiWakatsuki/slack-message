@@ -1,5 +1,6 @@
 import { getChannels, getMessages } from '@/lib/data';
 import { NextRequest, NextResponse } from 'next/server';
+import { Message } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,27 +13,37 @@ export async function GET(request: NextRequest) {
     try {
         const channels = await getChannels();
 
-        // Fetch all messages in parallel
-        // Note: caching in getMessages protects the Sheets API quota
-        const allChannelMessages = await Promise.all(
-            channels.map(async (c) => {
-                try {
-                    const msgs = await getMessages(c.id);
-                    return msgs.map(m => ({
-                        ...m,
-                        channelId: c.id,
-                        channelName: c.name
-                    }));
-                } catch (err) {
-                    console.error(`Failed to fetch messages for channel ${c.name} (${c.id}):`, err);
-                    return [];
-                }
-            })
-        );
+        // Helper to chunk array
+        const chunk = <T>(arr: T[], size: number): T[][] =>
+            Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+                arr.slice(i * size, i * size + size)
+            );
 
-        // Flatten and filter
-        const flat = allChannelMessages.flat();
-        const filtered = flat.filter(m =>
+        const chunks = chunk(channels, 5); // Process 5 channels at a time to avoid rate limits
+
+        type SearchMessage = Message & { channelId: string, channelName: string };
+        let allChannelMessages: SearchMessage[] = [];
+
+        for (const batch of chunks) {
+            const batchResults = await Promise.all(
+                batch.map(async (c) => {
+                    try {
+                        const msgs = await getMessages(c.id);
+                        return msgs.map(m => ({
+                            ...m,
+                            channelId: c.id,
+                            channelName: c.name
+                        }));
+                    } catch (err) {
+                        console.error(`Failed to fetch messages for channel ${c.name} (${c.id}):`, err);
+                        return [];
+                    }
+                })
+            );
+            allChannelMessages = allChannelMessages.concat(batchResults.flat());
+        }
+
+        const filtered = allChannelMessages.filter(m =>
             m.content.toLowerCase().includes(query) ||
             (m.user && m.user.name.toLowerCase().includes(query)) ||
             (m.files && m.files.some(f => f.name.toLowerCase().includes(query)))
