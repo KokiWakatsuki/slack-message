@@ -16,12 +16,17 @@ export async function GET(request: NextRequest) {
         // Note: caching in getMessages protects the Sheets API quota
         const allChannelMessages = await Promise.all(
             channels.map(async (c) => {
-                const msgs = await getMessages(c.id);
-                return msgs.map(m => ({
-                    ...m,
-                    channelId: c.id,
-                    channelName: c.name
-                }));
+                try {
+                    const msgs = await getMessages(c.id);
+                    return msgs.map(m => ({
+                        ...m,
+                        channelId: c.id,
+                        channelName: c.name
+                    }));
+                } catch (err) {
+                    console.error(`Failed to fetch messages for channel ${c.name} (${c.id}):`, err);
+                    return [];
+                }
             })
         );
 
