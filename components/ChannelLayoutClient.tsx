@@ -28,15 +28,23 @@ export function ChannelLayoutClient({ header, messageList, threadSidebar, hasThr
             </div>
 
             {/* Thread Sidebar Area: Show if thread is open. 
-                On mobile: takes full width (hidden message list). 
+                On mobile: Full screen overlay (fixed). 
                 On desktop: appears as side panel. 
             */}
             {isThreadOpen && (
-                <div className="md:block w-full md:w-auto h-full absolute md:relative z-20 md:z-auto inset-0 md:inset-auto">
-                    <ResizablePanel defaultWidth={400} side="right" minWidth={100} maxWidth={2000} className="w-full md:w-auto h-full border-l border-gray-200 dark:border-gray-700">
+                <>
+                    {/* Mobile: Full Screen Overlay */}
+                    <div className="md:hidden fixed inset-0 z-50 bg-white dark:bg-gray-900 w-full h-full overflow-hidden">
                         {threadSidebar}
-                    </ResizablePanel>
-                </div>
+                    </div>
+
+                    {/* Desktop: Side Panel */}
+                    <div className="hidden md:block w-auto h-full relative z-auto border-l border-gray-200 dark:border-gray-700">
+                        <ResizablePanel defaultWidth={400} side="right" minWidth={100} maxWidth={2000} className="h-full">
+                            {threadSidebar}
+                        </ResizablePanel>
+                    </div>
+                </>
             )}
         </div>
     );

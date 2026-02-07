@@ -102,7 +102,7 @@ export function Sidebar({ channels: initialChannels }: SidebarProps) {
                                 <li key={channel.id}>
                                     <Link
                                         href={`/channels/${encodeURIComponent(channel.id)}`}
-                                        className={`flex items-center px-4 py-1 hover:bg-[#350d36] dark:hover:bg-[#350d36] hover:text-white ${isActive
+                                        className={`flex items-center px-4 py-3 md:py-1 hover:bg-[#350d36] dark:hover:bg-[#350d36] hover:text-white transition-colors ${isActive
                                             ? 'bg-[#1164A3] text-white'
                                             : 'text-[#cfc3cf] dark:text-gray-300'
                                             }`}
