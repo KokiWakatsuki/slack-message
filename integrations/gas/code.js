@@ -260,6 +260,10 @@ function syncChannelsAndJoin() {
         if (newMappings.length > 0) {
             mapSheet.getRange(mapSheet.getLastRow() + 1, 1, newMappings.length, 2).setValues(newMappings);
         }
+
+        // 仕上げに重複チェックと掃除を行う
+        deduplicateChannelMap();
+
         return `同期完了。新しく ${newMappings.length} 件を登録し、${joinCount} 個のチャンネルに参加しました。`;
     } catch (e) {
         return "エラー: " + e.message;
@@ -1141,13 +1145,31 @@ function getChannelList() {
         }
 
         const data = mapSheet.getDataRange().getValues();
+        const seenIds = new Set();
+        const seenNames = new Set();
+        const list = [];
+
         // 2行目以降（データ行）をループして ID と 名前 のペアを作成
-        const list = data.slice(1).map(row => {
-            return {
-                id: row[0],    // channelId
-                name: row[1]   // lastKnownName
-            };
-        });
+        // 重複排除ロジックを追加
+        for (let i = 1; i < data.length; i++) {
+            const id = data[i][0];
+            const name = data[i][1];
+
+            // IDがある場合はIDで重複チェック
+            if (id && seenIds.has(id)) continue;
+
+            // IDがない（過去の遺産）場合でも、同じ名前ですでにID付きが登録されていればスキップ
+            if (!id && seenNames.has(name)) continue;
+
+            // 名前しかなくて、まだ登録されていない（純粋なImportのみデータ）はリストに入れるが、
+            // 後でID付きが来たらそちらを優先したい。
+            // しかしここでは単純に上から順。
+
+            if (id) seenIds.add(id);
+            if (name) seenNames.add(name);
+
+            list.push({ id: id, name: name });
+        }
 
         // 名前順に並び替えておくと使いやすい
         return list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
@@ -1155,4 +1177,54 @@ function getChannelList() {
         console.error("getChannelList Error: " + e.message);
         return [];
     }
+}
+
+/**
+ * _channelsシートの重複を掃除する（メンテナンス用）
+ */
+function deduplicateChannelMap() {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const mapSheet = ss.getSheetByName("_channels");
+    if (!mapSheet || mapSheet.getLastRow() <= 1) return;
+
+    const data = mapSheet.getDataRange().getValues();
+    const header = data[0];
+    const rows = data.slice(1);
+
+    // IDをキーにしたマップ。
+    // 名前だけの行は、同じ名前のID付き行があれば削除対象。
+    // ID付き行同士なら、後勝ち（最新）あるいはそのまま。
+
+    const uniqueMap = new Map(); // Name -> {id, row}
+
+    rows.forEach(row => {
+        const id = row[0];
+        const name = row[1];
+        if (!name) return;
+
+        if (uniqueMap.has(name)) {
+            const existing = uniqueMap.get(name);
+            // 既存がIDなしで、今回がIDありなら更新
+            if (!existing.id && id) {
+                uniqueMap.set(name, { id, name });
+            }
+            // 既存がIDありで、今回がIDなしなら何もしない（今回は捨てる）
+            // 両方IDありなら…？まあ上書きでいいか
+        } else {
+            uniqueMap.set(name, { id, name });
+        }
+    });
+
+    // 書き戻し
+    const newRows = Array.from(uniqueMap.values()).map(v => [v.id, v.name]);
+
+    // ソート（名前順）
+    newRows.sort((a, b) => a[1].localeCompare(b[1], 'ja'));
+
+    mapSheet.clearContents();
+    mapSheet.appendRow(header);
+    if (newRows.length > 0) {
+        mapSheet.getRange(2, 1, newRows.length, 2).setValues(newRows);
+    }
+    return `重複を整理しました。${rows.length} -> ${newRows.length}`;
 }
