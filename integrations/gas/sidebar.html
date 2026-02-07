@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        body {
+            padding: 15px;
+            background: #fafafa;
+            font-size: 13px;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .box {
+            margin-bottom: 15px;
+            border-top: 3px solid #3273dc;
+            padding: 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .loader-box {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-top: 1px solid #dbdbdb;
+            text-align: center;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 999;
+        }
+
+        /* Make room for the loader at the bottom */
+        body {
+            padding-bottom: 80px;
+        }
+
+        .status-log {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 11px;
+            background: #2d3436;
+            color: #55efc4;
+            padding: 10px;
+            border-radius: 6px;
+            max-height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .step-num {
+            background: #3273dc;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .button.is-small {
+            font-weight: 600;
+        }
+
+        .help-text {
+            color: #636e72;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="box">
+        <h2 class="title is-6"><span class="step-num">1</span> 準備</h2>
+        <button class="button is-small is-link is-light is-fullwidth" onclick="run('runInitialSetup')">🚀
+            連携を開始する</button>
+        <p class="help-text">※ 最初に1回だけ実行してください。</p>
+    </div>
+
+    <div class="box" style="border-top-color: #ff3860;">
+        <h2 class="title is-6"><span class="step-num">2</span> 過去データ (Drive)</h2>
+        <p class="is-size-7 mb-2">Googleドライブに保存された過去のチャット履歴を取り込みます。</p>
+        <button id="importBtn" class="button is-danger is-small is-fullwidth mb-2"
+            onclick="run('runImportFromExport')">📥 データの取り込み開始</button>
+        <button class="button is-ghost is-small is-fullwidth" onclick="run('resetImportState')">最初からやり直す</button>
+    </div>
+
+    <div class="box" style="border-top-color: #ffdd57;">
+        <h2 class="title is-6"><span class="step-num">3</span> 最新データ (Slack)</h2>
+        <p class="is-size-7 mb-2">取り込み以降の新しいメッセージを取得して、最新の状態にします。</p>
+        <button id="apiSyncBtn" class="button is-warning is-small is-fullwidth mb-2"
+            onclick="run('importAllPastMessages')">🔄 最新の状態に更新</button>
+        <button class="button is-ghost is-small is-fullwidth" onclick="run('resetApiSyncStatus')">最初からやり直す</button>
+    </div>
+
+    <div class="box" style="border-top-color: #00b894;">
+        <h2 class="title is-6">個別の修正</h2>
+        <div class="select is-small is-fullwidth mb-2">
+            <select id="channelList">
+                <option>読込中...</option>
+            </select>
+        </div>
+        <button class="button is-success is-small is-fullwidth" onclick="runIndividual()">このチャンネルだけ更新</button>
+        <p class="help-text">※ 特定のチャンネルだけ更新されない場合に使います。</p>
+    </div>
+
+    <div class="box" style="border-top-color: #a29bfe;">
+        <h2 class="title is-6">トラブルシューティング</h2>
+        <button class="button is-small is-dark is-fullwidth mb-2" onclick="run('checkDataIntegrity')">データの健康診断</button>
+        <p class="help-text">※ サイトでエラーが出る場合に実行してください。</p>
+    </div>
+
+    <div id="loader" class="loader-box">
+        <progress class="progress is-small is-info" max="100"></progress>
+        <p id="loaderText" class="is-size-7">処理中... <br>⚠️ このタブは閉じないでください<br>(別のタブで作業するのはOKです)</p>
+    </div>
+
+    <div id="result" class="status-log">> READY...</div>
+
+    <script>
+        let pollInterval = null;
+
+        // 起動時にチャンネルリストを読み込む
+        window.onload = () => { loadChannels(); };
+
+        function loadChannels() {
+            google.script.run.withSuccessHandler(list => {
+                const select = document.getElementById('channelList');
+                if (list.length === 0) {
+                    select.innerHTML = '<option>チャンネルが見つかりません</option>';
+                    return;
+                }
+                select.innerHTML = list.map(ch => `<option value="${ch.id}">${ch.name}</option>`).join('');
+            }).getChannelList();
+        }
+
+        /**
+         * GASの関数を実行する
+         */
+        function run(funcName) {
+            // Set Mode
+            if (funcName === 'runImportFromExport') {
+                currentMode = 'import';
+            } else if (funcName === 'importAllPastMessages') {
+                currentMode = 'api';
+            } else {
+                currentMode = null; // Other one-off tasks
+            }
+
+            // UI Reset
+            toggleLoader(true);
+            const progressBar = document.querySelector('progress.progress');
+            if (progressBar) {
+                progressBar.removeAttribute('value');
+                progressBar.value = 0;
+                progressBar.innerText = '0%';
+            }
+
+            startPolling(); // ポーリング開始
+            google.script.run
+                .withSuccessHandler(msg => {
+                    // onSuccess内でstopPollingするか判断する
+                    onSuccess(msg);
+                    // チャンネル同期後はリストを更新
+                    if (funcName === 'syncChannelsAndJoin' || funcName === 'runInitialSetup') loadChannels();
+                })
+                .withFailureHandler(onFailure)
+            [funcName]();
+        }
+
+        /**
+         * 選択したチャンネルのみ同期する
+         */
+        function runIndividual() {
+            const select = document.getElementById('channelList');
+            const channelId = select.value;
+            const channelName = select.options[select.selectedIndex].text;
+
+            if (!channelId || channelId.includes('読み込み')) return;
+
+            currentMode = 'api'; // Individual run treated as API sync
+            toggleLoader(true);
+            const progressBar = document.querySelector('progress.progress');
+            if (progressBar) progressBar.value = 0;
+
+            startPolling();
+            google.script.run
+                .withSuccessHandler(msg => {
+                    // onSuccess will handle the message, onStatusUpdate will handle completion
+                    onSuccess(msg);
+                })
+                .withFailureHandler(onFailure)
+                .runBackfillLogic(channelId, channelName);
+        }
+
+        function toggleLoader(val) {
+            document.getElementById('loader').style.display = val ? 'block' : 'none';
+            if (val) {
+                document.getElementById('result').innerText = '> 実行を開始しました。しばらくお待ちください...';
+                const loaderText = document.getElementById('loaderText');
+                if (loaderText) loaderText.innerHTML = '処理中... <br>⚠️ このタブは閉じないでください<br>(別のタブで作業するのはOKです)';
+            }
+        }
+
+        // ポーリング開始
+        function startPolling() {
+            if (pollInterval) return;
+            pollInterval = setInterval(checkStatus, 5000); // 5秒ごとに確認
+        }
+
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+
+        function checkStatus() {
+            // New polling function
+            google.script.run.withSuccessHandler(onStatusUpdate).getAllStatus();
+        }
+
+        function onStatusUpdate(statusJson) {
+            // ポーリング停止済みなら更新しない（完了メッセージの上書き防止）
+            if (!pollInterval || !statusJson || !currentMode) return;
+            const allStatus = JSON.parse(statusJson);
+
+            let status = null;
+            if (currentMode === 'import') {
+                status = allStatus.import;
+            } else if (currentMode === 'api') {
+                status = allStatus.api;
+            }
+
+            if (!status) return; // No status for current mode
+
+            const progressBar = document.querySelector('progress.progress');
+            const resultDiv = document.getElementById('result');
+            const loaderText = document.getElementById('loaderText');
+
+            // === IMPORT MODE LOGIC ===
+            if (currentMode === 'import') {
+                if (status.isRepairing) {
+                    if (progressBar) {
+                        progressBar.removeAttribute('value');
+                        progressBar.value = 100;
+                        progressBar.innerText = '100%';
+                    }
+                    resultDiv.innerText = '> 🔄 データの取り込みが完了し、スレッド関係を修復しています...\n> (数分かかる場合があります)';
+
+                    if (loaderText) loaderText.innerHTML = 'スレッド関係を修復中...<br>⚠️ このタブは閉じないでください';
+
+                } else if (status.totalFolders > 0) {
+                    const percent = Math.floor((status.completedFolders.length / status.totalFolders) * 100);
+                    if (progressBar) {
+                        progressBar.value = percent;
+                        progressBar.innerText = `${percent}%`;
+                    }
+                }
+            }
+
+            // === API SYNC MODE LOGIC ===
+            else if (currentMode === 'api') {
+                if (status.channels && status.channels.length > 0) {
+                    const percent = Math.floor((status.lastIndex / status.channels.length) * 100);
+                    if (progressBar) {
+                        progressBar.value = percent;
+                        progressBar.innerText = `${percent}%`;
+                    }
+                }
+            }
+
+            // Check for completion
+            if (status.isCompleted) {
+                stopPolling();
+                toggleLoader(false);
+                resultDiv.innerText = '> ✅ 処理が完了しました。';
+                if (progressBar) progressBar.value = 100;
+
+                // Reset buttons
+                const importBtn = document.getElementById('importBtn');
+                if (importBtn) {
+                    importBtn.innerText = '📥 データの取り込み開始';
+                    importBtn.classList.remove('is-loading');
+                    importBtn.removeAttribute('disabled');
+                }
+                const apiBtn = document.getElementById('apiSyncBtn');
+                if (apiBtn) {
+                    apiBtn.innerText = '🔄 最新の状態に更新';
+                    apiBtn.classList.remove('is-loading');
+                    apiBtn.removeAttribute('disabled');
+                }
+                currentMode = null; // Reset mode
+                return;
+            }
+
+
+            // ストール検知 (共通ロジック)
+            const now = new Date().getTime();
+            // 修復中は3分、それ以外は2分 (頻繁に更新されるようになったため短縮)
+            const timeoutMs = (currentMode === 'import' && status.isRepairing) ? 3 * 60 * 1000 : 2 * 60 * 1000;
+
+            if (status.lastUpdated && (now - status.lastUpdated > timeoutMs)) {
+                stopPolling();
+                toggleLoader(false);
+
+                if (currentMode === 'import' && status.isRepairing) {
+                    resultDiv.innerText = '> ⚠️ 修復処理が停止しました (タイムアウト)。\n> そのまま「再開する」ボタンを押してください。';
+                } else {
+                    resultDiv.innerText = '> ⚠️ 自動処理が停止したようです (一定時間応答なし)。\n> そのままボタンを再度押して再開してください。';
+                }
+
+                // ボタンの復帰（本来は押したボタンを特定すべきだが、importBtnを代表にしておくか、あるいは両方リセットするか）
+                // 簡易的に両方リセット
+                const importBtn = document.getElementById('importBtn');
+                if (importBtn) {
+                    importBtn.innerText = '🔄 再開する';
+                    importBtn.classList.remove('is-loading');
+                    importBtn.removeAttribute('disabled');
+                }
+                const apiBtn = document.getElementById('apiSyncBtn');
+                if (apiBtn) {
+                    apiBtn.innerText = '🔄 再開する';
+                    apiBtn.classList.remove('is-loading');
+                    apiBtn.removeAttribute('disabled');
+                }
+                currentMode = null; // Reset mode
+            }
+        }
+
+        function onSuccess(msg) {
+            // onSuccessはあくまで「トリガー予約が完了した」ことの通知に過ぎない
+            // 実際には裏で動いているので、ローディングは止めない
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerText = '> ' + msg;
+
+            // Progress Parsing from msg (Initial sync)
+            const match = msg.match(/(\d+)\s*\/\s*(\d+)/);
+            if (match) {
+                const current = parseInt(match[1]);
+                const total = parseInt(match[2]);
+                if (total > 0) {
+                    const percent = Math.floor((current / total) * 100);
+                    const progressBar = document.querySelector('progress.progress');
+                    if (progressBar) {
+                        progressBar.value = percent;
+                    }
+                }
+            }
+
+            // 中断またはマイルドなエラーの場合はボタンのテキストを変更してポーリング継続
+            if (msg.includes('継続') || msg.includes('再開')) {
+                document.getElementById('importBtn').innerText = '🔄 自動継続モード中...';
+                document.getElementById('importBtn').classList.add('is-loading');
+                document.getElementById('importBtn').setAttribute('disabled', 'true');
+                toggleLoader(true); // Ensure loader is ON
+                startPolling(); // ポーリング開始
+            } else if (msg.includes('完了')) {
+                const progressBar = document.querySelector('progress.progress');
+                if (progressBar) progressBar.value = 100;
+                document.getElementById('importBtn').innerText = '📥 データの取り込み開始';
+                document.getElementById('importBtn').classList.remove('is-loading');
+                document.getElementById('importBtn').removeAttribute('disabled');
+                stopPolling();
+                toggleLoader(false);
+            } else {
+                // その他の完了メッセージ（リセットなど）
+                stopPolling();
+                toggleLoader(false);
+            }
+        }
+
+        function onFailure(err) {
+            stopPolling();
+            toggleLoader(false);
+            document.getElementById('result').innerText = '> 【致命的エラー】\n' + err;
+        }
+    </script>
+</body>
+
+</html>
