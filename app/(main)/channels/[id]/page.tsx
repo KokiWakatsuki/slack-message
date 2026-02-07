@@ -20,7 +20,8 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 
 import { ChannelHeader } from '@/components/ChannelHeader';
 import { ThreadSidebar } from '@/components/ThreadSidebar';
-import { ResizablePanel } from '@/components/ResizablePanel';
+// import { ResizablePanel } from '@/components/ResizablePanel'; // Moved to ChannelLayoutClient
+import { ChannelLayoutClient } from '@/components/ChannelLayoutClient';
 
 export default async function ChannelPage({ params, searchParams }: PageProps) {
     const { id } = await params;
@@ -45,19 +46,11 @@ export default async function ChannelPage({ params, searchParams }: PageProps) {
     }
 
     return (
-        <div className="flex h-full w-full overflow-hidden">
-            <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-900 h-full">
-                <ChannelHeader title={decodedId} />
-                <div className="flex-1 min-h-0">
-                    <MessageList initialMessages={messages} />
-                </div>
-            </div>
-
-            {rootMessage && (
-                <ResizablePanel defaultWidth={400} side="right" minWidth={100} maxWidth={2000} className="border-l border-gray-200 dark:border-gray-700">
-                    <ThreadSidebar rootMessage={rootMessage} channelId={decodedId} />
-                </ResizablePanel>
-            )}
-        </div>
+        <ChannelLayoutClient
+            header={<ChannelHeader title={decodedId} />}
+            messageList={<MessageList initialMessages={messages} />}
+            threadSidebar={rootMessage ? <ThreadSidebar rootMessage={rootMessage} channelId={decodedId} /> : null}
+            hasThread={!!rootMessage}
+        />
     );
 }

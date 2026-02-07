@@ -1,8 +1,9 @@
 "use client";
 
 import { RefreshButton } from './RefreshButton';
-import { Search } from 'lucide-react';
+import { Search, ChevronLeft } from 'lucide-react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
 export function ChannelHeader({ title }: { title: string }) {
@@ -31,7 +32,12 @@ export function ChannelHeader({ title }: { title: string }) {
 
     return (
         <header className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky top-0 z-10 flex items-center justify-between gap-4">
-            <h1 className="font-bold text-lg text-gray-900 dark:text-white truncate min-w-0">#{title}</h1>
+            <div className="flex items-center gap-2 min-w-0">
+                <Link href="/" className="md:hidden p-1 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400">
+                    <ChevronLeft className="w-6 h-6" />
+                </Link>
+                <h1 className="font-bold text-lg text-gray-900 dark:text-white truncate">#{title}</h1>
+            </div>
 
             <div className="flex items-center gap-2 flex-1 justify-end max-w-md">
                 <div className="relative w-full max-w-xs hidden md:block">

@@ -2,7 +2,7 @@
 
 import { Message } from '@/lib/types';
 import { MessageItem } from './MessageItem';
-import { X } from 'lucide-react';
+import { X, ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface ThreadSidebarProps {
@@ -29,7 +29,11 @@ export function ThreadSidebar({ rootMessage, channelId }: ThreadSidebarProps) {
                     onClick={closeThread}
                     className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
                 >
-                    <X className="w-5 h-5" />
+                    <X className="w-5 h-5 hidden md:block" />
+                    <div className="md:hidden flex items-center gap-1">
+                        <ChevronLeft className="w-5 h-5" />
+                        <span className="text-sm font-medium">Back</span>
+                    </div>
                 </button>
             </div>
 
