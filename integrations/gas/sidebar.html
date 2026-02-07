@@ -102,12 +102,18 @@
 
     <div class="box" style="border-top-color: #00b894;">
         <h2 class="title is-6">個別の修正</h2>
-        <div class="select is-small is-fullwidth mb-2">
-            <select id="channelList">
-                <option>読込中...</option>
-            </select>
+        <div class="control-group">
+            <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                <div class="select is-small is-fullwidth">
+                    <select id="channelList">
+                        <option>読込中...</option>
+                    </select>
+                </div>
+                <button id="refreshBtn" onclick="refreshChannelList()" class="button is-small"
+                    title="チャンネルリストを最新に更新">🔄</button>
+            </div>
+            <button class="button is-success is-small is-fullwidth" onclick="runIndividual()">このチャンネルだけ更新</button>
         </div>
-        <button class="button is-success is-small is-fullwidth" onclick="runIndividual()">このチャンネルだけ更新</button>
         <p class="help-text">※ 特定のチャンネルだけ更新されない場合に使います。</p>
     </div>
 
@@ -198,6 +204,40 @@
                 })
                 .withFailureHandler(onFailure)
                 .runBackfillLogic(channelId, channelName);
+        }
+
+        /**
+         * チャンネルリストを最新に更新する
+         */
+        function refreshChannelList() {
+            const btn = document.getElementById('refreshBtn');
+            const select = document.getElementById('channelList');
+
+            btn.classList.add('is-loading');
+            btn.setAttribute('disabled', 'true');
+            select.setAttribute('disabled', 'true');
+
+            google.script.run
+                .withSuccessHandler(msg => {
+                    // リストを再読み込み
+                    loadChannels();
+
+                    // ボタン復帰
+                    btn.classList.remove('is-loading');
+                    btn.removeAttribute('disabled');
+                    select.removeAttribute('disabled');
+
+                    // 完了トースト表示（簡易）
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerText = '> ✅ チャンネルリストを更新しました';
+                })
+                .withFailureHandler(err => {
+                    btn.classList.remove('is-loading');
+                    btn.removeAttribute('disabled');
+                    select.removeAttribute('disabled');
+                    onFailure(err);
+                })
+                .syncChannelsAndJoin();
         }
 
         function toggleLoader(val) {
